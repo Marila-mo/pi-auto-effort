@@ -1,0 +1,52 @@
+{
+  "name": "pi-auto-effort",
+  "version": "0.1.0",
+  "description": "Automatically adapt reasoning effort without switching models, with provider-specific cache preservation and optional native cache warming",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marila-mo/pi-auto-effort.git"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "reasoning",
+    "effort",
+    "prompt-cache"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:e2e": "tsx tests/e2e.ts",
+    "test:catalog": "tsx tests/catalog-e2e.ts",
+    "verify": "npm run check && npm test && npm run test:e2e && npm run test:catalog",
+    "prepack": "npm run check"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.0.4",
+    "@earendil-works/pi-coding-agent": "1.0.4",
+    "@types/node": "^22.0.0",
+    "prettier": "3.6.2",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
