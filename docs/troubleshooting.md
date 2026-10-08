@@ -47,7 +47,7 @@ Possible causes include an unavailable classifier, missing authentication, a tim
 
 For root, verify the selected answering provider's normal Pi authentication. For Jev, check the exact classifier catalog ID and that provider's authentication separately. Direct TypeSafe recognizes `TYPESAFE_API_KEY`; it must reach the process starting Pi. Classifiers are not chat models in `/model`, and this extension does not require codemode. It never silently switches to another judge provider.
 
-Retention can legitimately keep `off`, `minimal` or a level below `minEffort`. Saved decisions can be reused within the same task/phase, so repeating a prompt or toggling `on` does not guarantee an immediate fresh judgment. Fix the prerequisite, reload persistent changes and inspect the next relevant task/phase; avoid unbounded retries, which can consume additional quota.
+Retention can legitimately keep `off`, `minimal` or a level below `minEffort`. A failed judgment is not a successful saved decision. A transient cooldown avoids duplicate attempts until two further completed tool batches or a new checkpoint/phase/task; reload clears it. Successful decisions are reused between the four-batch checkpoints described in [usage](usage.md). Fix authentication/catalog/configuration prerequisites before retrying.
 
 ## `Auto-effort setup or payload validation failed; generation was not dispatched`
 
@@ -58,6 +58,8 @@ Check, in order:
 1. Does the selected model support at least one automatic level at or above `minEffort`? If not, choose a compatible minimum/model or disable automatic selection; it does not silently clamp the minimum downward.
 2. Is another extension registering the same provider or changing model/effort/history fields?
 3. Have custom endpoint, compatibility or Anthropic beta settings changed the required native payload?
+4. Does the OpenAI payload set a reasoning mode other than omitted/standard, or configure multi_agent? Managed configuration updates require standard single-agent mode; these configurations fail before generation.
+5. Is an identical-input retry trying to change an already prepared/sent effort? Its earlier update cannot be rewritten or followed by an adjacent update. Retry at the same effort, or continue with genuinely appended history.
 
 Preserve the error evidence. Do not bypass final validation, remove required beta features or inject your own `configuration_update` items. `/auto-effort off` stops new judgments but leaves the wrapper's historical replay and validation active, so it may not resolve a payload conflict. To remove the extension entirely, use the uninstall steps below. Live provider acceptance remains unverified even after local checks pass.
 

@@ -75,10 +75,12 @@ export default function autoEffort(pi: ExtensionAPI) {
   const pending = new WeakMap<AssistantMessage, ModelThinkingLevel>();
   const responseLevels = new Map<string, ModelThinkingLevel>();
   const warmSnapshots = new Map<string, ModelThinkingLevel>();
+  const failedSelections = new Map<string, number>();
   function cancel() {
     scope.abort();
     scope = new AbortController();
     warmSnapshots.clear();
+    failedSelections.clear();
   }
   function owned(
     ctx: ExtensionContext,
@@ -129,11 +131,13 @@ export default function autoEffort(pi: ExtensionAPI) {
           (d) =>
             record(d) &&
             typeof d.key === "string" &&
+            typeof d.effort === "string" &&
             LEVELS.includes(d.effort as Effort),
         ) &&
         (data.cache === undefined || isCacheState(data.cache)) &&
         (data.lastLevel === undefined ||
-          ["off", "minimal", ...LEVELS].includes(String(data.lastLevel)))
+          (typeof data.lastLevel === "string" &&
+            ["off", "minimal", ...LEVELS].includes(data.lastLevel)))
       )
         stored = data as Stored;
     }
@@ -199,7 +203,9 @@ export default function autoEffort(pi: ExtensionAPI) {
               (key) => key in (options ?? {}),
             )
           )
-            return ['reasoningEffort', 'thinkingEnabled', 'effort'].some(key => key in (options ?? {}))
+            return ["reasoningEffort", "thinkingEnabled", "effort"].some(
+              (key) => key in (options ?? {}),
+            )
               ? original.stream(model, context, options)
               : original.streamSimple(model, context, options);
           const output = createAssistantMessageEventStream();
@@ -267,10 +273,15 @@ export default function autoEffort(pi: ExtensionAPI) {
                   snap.key,
                 ]);
                 const saved = decisions.findLast((d) => d.key === key);
-                if (saved) effective = saved.effort;
-                else {
+                if (saved && choices.includes(saved.effort))
+                  effective = saved.effort;
+                else if (
+                  failedSelections.get(key) === undefined ||
+                  snap.progressStep - failedSelections.get(key)! >= 2
+                ) {
+                  let selected: Effort | undefined;
                   try {
-                    effective =
+                    selected =
                       choices.length === 1
                         ? choices[0]!
                         : await select(
@@ -283,17 +294,24 @@ export default function autoEffort(pi: ExtensionAPI) {
                           );
                   } catch {
                     assertOwns();
+                    failedSelections.set(key, snap.progressStep);
+                    if (failedSelections.size > 32)
+                      failedSelections.delete(
+                        failedSelections.keys().next().value!,
+                      );
                     active.ui.notify(
                       "Effort selection failed or was uncertain; retaining current effort.",
                       "warning",
                     );
                   }
                   assertOwns();
-                  if (LEVELS.includes(effective as Effort))
-                    decisions = [
-                      ...decisions,
-                      { key, effort: effective as Effort },
-                    ].slice(-32);
+                  if (selected !== undefined) {
+                    effective = selected;
+                    failedSelections.delete(key);
+                    decisions = [...decisions, { key, effort: selected }].slice(
+                      -32,
+                    );
+                  }
                 }
               } else effective = requested;
               assertOwns();
@@ -355,7 +373,9 @@ export default function autoEffort(pi: ExtensionAPI) {
                         );
                       const adapted = adaptPayload(
                         value,
-                        existing?.cache,
+                        existing?.cache
+                          ? { ...existing.cache, sent: true }
+                          : undefined,
                         // A failed judge can retain off/minimal; selector choices remain restricted.
                         !LEVELS.includes(effective as Effort),
                       );
@@ -365,7 +385,7 @@ export default function autoEffort(pi: ExtensionAPI) {
                         version: 1,
                         model: ref(model),
                         decisions,
-                        cache: adapted.state,
+                        cache: { ...adapted.state, sent: true },
                         lastLevel: effective,
                       });
                       if (adapted.rebased)

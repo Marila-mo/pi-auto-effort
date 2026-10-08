@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { adaptPayload, replayWarm, type CacheState } from '../src/cache.js';
+import { adaptPayload, replayWarm, isCacheState, type CacheState } from '../src/cache.js';
 import { parseConfig, allowedLevels, capability } from '../src/config.js';
 import { snapshot, parseJudge, parseClassification } from '../src/selector.js';
 
@@ -47,6 +47,37 @@ test('retries reuse state, same boundaries do not accumulate adjacent updates', 
   assert.equal(replaced.payload.input.filter(item => item.type === 'configuration_update').length, 1);
 });
 
+test('sent retries preserve the request and reject effort changes at the same boundary', () => {
+  const raw = [user('task')];
+  const first = adaptPayload(payload(raw, 'medium'));
+  const initialSent = { ...first.state, sent: true };
+  assert.deepEqual(adaptPayload(payload(raw, 'medium'), initialSent).payload, first.payload);
+  assert.throws(() => adaptPayload(payload(raw, 'high'), initialSent), /already sent/);
+  const nextRaw = [...raw, { role: 'assistant', content: 'OK' }, user('next')];
+  const next = adaptPayload(payload(nextRaw, 'high'), initialSent);
+  assert.equal(next.state.sent, undefined);
+  assert.deepEqual(next.payload.input.slice(0, first.payload.input.length), first.payload.input);
+  const sent = { ...next.state, sent: true };
+  const copy = structuredClone(sent);
+  const retry = adaptPayload(payload(nextRaw, 'high'), sent);
+  assert.equal(JSON.stringify(retry.payload), JSON.stringify(next.payload));
+  assert.throws(() => adaptPayload(payload(nextRaw, 'max'), sent), /already sent/);
+  assert.throws(() => adaptPayload(payload(nextRaw, 'medium'), sent), /already sent/);
+  assert.deepEqual(sent, copy);
+  const appended = adaptPayload(payload([...nextRaw, user('follow-up')], 'max'), sent);
+  assert.deepEqual(appended.payload.input.slice(0, next.payload.input.length), next.payload.input);
+  assert.equal(appended.state.sent, undefined);
+});
+
+test('cache state accepts legacy drafts and only boolean sent markers and string efforts', () => {
+  const first = adaptPayload(payload([user('task')], 'medium'));
+  const next = adaptPayload(payload([user('task'), user('next')], 'high'), first.state);
+  assert.equal(isCacheState(next.state), true);
+  for (const sent of [false, true]) assert.equal(isCacheState({ ...next.state, sent }), true);
+  for (const sent of ['true', 1, null, []]) assert.equal(isCacheState({ ...next.state, sent }), false);
+  assert.equal(isCacheState({ ...next.state, updates: [{ ...next.state.updates[0], effort: ['high'] }] }), false);
+});
+
 test('prefix/root changes explicitly rebase instead of replaying invalid history', () => {
   const old = adaptPayload(payload([user('a'), user('b')], 'high'));
   for (const next of [payload([user('changed')], 'max'), payload([user('a'), user('b')], 'max', { instructions: 'new' }), payload([user('a')], 'max'), payload([user('a'), user('b')], 'max', { tools: [{ name: 'new' }] }), payload([user('a'), user('b')], 'max', { prompt_cache_key: 'new' })]) {
@@ -58,12 +89,25 @@ test('unsafe ownership/truncation/compaction and malformed payloads fail closed'
   for (const p of [payload([{ type: 'configuration_update' }]), payload([user('x')], 'medium', { truncation: 'auto' }), payload([user('x')], 'medium', { context_management: [] }), { model: 'x', input: null }, payload([user('x')], 'none')]) assert.throws(() => adaptPayload(p));
 });
 
+test('Responses accepts standard reasoning mode and rejects unsupported or malformed modes', () => {
+  const raw = [user('task')];
+  const first = adaptPayload(payload(raw, 'medium', { reasoning: { effort: 'medium', mode: 'standard' } }));
+  const next = adaptPayload(payload([...raw, user('next')], 'high', { reasoning: { effort: 'high', mode: 'standard' } }), { ...first.state, sent: true });
+  assert.equal(next.payload.reasoning.mode, 'standard');
+  assert.equal(next.payload.reasoning.effort, 'medium');
+  assert.equal(next.payload.input.at(-1)?.type, 'configuration_update');
+  for (const mode of ['pro', [], {}, null, false, 1]) assert.throws(() => adaptPayload(payload(raw, 'medium', { reasoning: { effort: 'medium', mode } })));
+  for (const multi_agent of [{}, [], null, false, true, 'standard']) assert.throws(() => adaptPayload(payload(raw, 'medium', { multi_agent })));
+});
+
 test('warming replays only a matching historical prefix without changing state', () => {
   const first = adaptPayload(payload([user('a')], 'medium'));
   const second = adaptPayload(payload([user('a'), { role: 'assistant', content: 'OK' }, user('b')], 'high'), first.state);
   const copy = structuredClone(second.state);
   assert.deepEqual(replayWarm(payload([user('a')]), second.state).input, first.payload.input);
   assert.deepEqual(replayWarm(payload([user('a'), { role: 'assistant', content: 'OK' }, user('b')], 'high'), second.state).input, second.payload.input);
+  assert.deepEqual(replayWarm(payload([user('a')]), { ...second.state, sent: true }).input, first.payload.input);
+  assert.deepEqual(replayWarm(payload([user('a'), { role: 'assistant', content: 'OK' }, user('b')], 'high'), { ...second.state, sent: true }).input, second.payload.input);
   assert.deepEqual(second.state, copy);
   assert.throws(() => replayWarm(payload([user('different')]), second.state));
 });

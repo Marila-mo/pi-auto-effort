@@ -15,7 +15,9 @@ Automatic selection can make an extra paid/quota-consuming judge request. Root s
 
 For example, you might start with “Fix the failing validation in this function,” then ask “Review the transaction boundary and failure recovery.” These are hypothetical tasks, not promises that particular efforts will be selected. Effort is chosen from the model's supported choices and your configured minimum; the extension does not replace the answering model with a larger or cheaper one.
 
-Selection is keyed to a new user task or a detected phase transition—not every read or tool continuation. The current implementation distinguishes analysis, execution after successful edit/write tools, and recovery after recent failed tools. This is a heuristic based on tool metadata, not a complete understanding of task difficulty. Repeated contexts may reuse an earlier decision without another judge call. If only one allowed level remains, it is selected without a judge.
+Selection runs on a new user task or a phase transition, including re-entry after recovery. Within a phase episode, it reassesses every four completed assistant tool batches. Parallel tool results count as one batch; prose alone does not advance the checkpoint. Recovery also reassesses at failed-batch counts 1, 2, 4, 8 and so on, while retaining the four-batch periodic bound. Ordinary continuations reuse a successful decision between checkpoints. If only one allowed level remains, it is selected without a judge.
+
+This cadence trades at most four completed tool batches of reassessment lag for fewer judge requests than judging every response. The judge receives current public progress text and bounded progress/failure counts at each checkpoint; no language-specific keywords choose effort. Difficulty visible only inside tool-result contents remains outside the existing metadata-only privacy contract. The four-batch cadence is a reproducible conservative policy, not a measured optimum or a guarantee of lower vendor costs.
 
 ## Commands
 
@@ -85,7 +87,7 @@ Then run `/thinking` and choose the desired level. Historical effort adaptation 
 
 ## Failure, cancellation and the minimum
 
-- A failed, invalid, timed-out or low-confidence judge retains the existing effective level. That can include manual off/minimal or a level below your automatic minimum.
+- A failed, invalid, timed-out or low-confidence judge retains the existing effective level. That can include manual off/minimal or a level below your automatic minimum. It is never saved as a successful decision. An in-memory cooldown suppresses another attempt at the same checkpoint until two further completed tool batches, or until a new checkpoint/phase/task; reload clears this cooldown.
 - `minEffort` restricts successful automatic choices; it is not a universal minimum for all requests or manual mode.
 - If the model has no supported automatic choice at or above the minimum, generation stops with a setup/payload error. It does not silently lower the minimum.
 - Cancellation does not apply a late judge result. Extra requests already sent may still consume quota.

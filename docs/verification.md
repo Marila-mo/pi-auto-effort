@@ -27,12 +27,25 @@ Fixture cache counters, prices and cache lifetimes are deliberately synthetic. S
 
 ## Observed local coverage
 
-The final source tree passes 14 pre-authored unit tests and 11 Pi/native-HTTP fixture configurations: four GPT IDs under both Responses providers and three Claude IDs. Flows cover manual minimal/off, failed/deadlined judges retaining off, cancellation, replacement-safe metadata, reload, configuration refresh/removal, native compaction, tree navigation, persisted runtime resume, new-file forks, unsafe model/beta/update rejection, native Jev and standard warming. Split-turn compactions can make two native summary requests; neither invokes the selector.
+The baseline source tree passed 14 pre-authored unit tests and 11 Pi/native-HTTP fixture configurations: four GPT IDs under both Responses providers and three Claude IDs. Flows cover manual minimal/off, failed/deadlined judges retaining off, cancellation, replacement-safe metadata, reload, configuration refresh/removal, native compaction, tree navigation, persisted runtime resume, new-file forks, unsafe model/beta/update rejection, native Jev and standard warming. Split-turn compactions can make two native summary requests; neither invokes the selector.
 
 A disposable offline Pi CLI/RPC run also installed the packed archive without `node_modules`, discovered the package-origin command, handled `/auto-effort status`, and removed its local configuration. It used no user-global settings or credentials. Reproduction steps and archive fingerprints are retained in the local `artifacts/packed-install-*` reports.
 
 Public GitHub installation was also checked with disposable HOME/cwd/agent directories, no credentials and offline Pi model traffic. Source cloning alone used the public network. See [publication status](publication.md) for the dated revision and local runner/report references.
 
+## Independent review follow-up (2026-10-08)
+
+The supplied evidence pinned `acf629080e0f359e3c0659fcbd3978ac21930fa3`, which matched the fetched main HEAD. Under supported Node 22.22.3, all original 14 tests passed and the seven additional review assertions failed before changes. Original reproduction output is retained separately from final verification output.
+
+R1/R2 exposed a documented phase-only policy tradeoff that did not meet the dynamically adaptive requirement. R1 now checks bounded reassessment after four completed tool batches, rather than requiring another paid judgment for every different public progress sentence. R2 retains the second-failure checkpoint. The new key policy invalidates old phase-only decision identities without changing the version-1 session/cache format.
+
+R3/R4 were confirmed type-validation defects. R5/R6 were missing local compatibility guards; the [official reasoning guide](https://developers.openai.com/api/docs/guides/reasoning) specifies standard single-agent mode for configuration updates. Their fixture checks establish rejection before transport, not vendor acceptance. R7 assumed that a prepared state had already been sent. It now marks that state explicitly and checks immutable same-effort replay plus explicit rejection of an identical-input effort change. Draft replacement remains covered by the original test.
+
+Separately, the extension integration cached failed-selection fallback as a successful decision. This is fixed with successful-only persistence and a separate bounded transient cooldown. Real Pi tool-loop coverage checks both selector recovery and stored decision entries, with actual filesystem read operations, native request conversion and synthetic protocol responses. It also checks within-phase escalation/simplification, repeated tool errors/recovery episodes, exact native transport retry payloads and unsupported OpenAI modes.
+
+The expanded suite contains 30 isolated tests, retaining the original 14, plus the existing 11 protocol configurations and five catalog scenarios. For OpenAI API, OpenAI OAuth and Claude, the actual-read adaptive loop uses nine main requests and three judgments over eight completed batches, selecting medium for four responses, high for four, then medium. This is six fewer judgments than an every-response policy for that fixture, not measured monetary savings. Recovery and failed-selector loops report their counters independently; native OpenAI retry uses identical bodies across synthetic 503, 429 and success.
+
+These runs measure request counts and structural cache-prefix preservation in deterministic fixtures. They do not prove optimum reasoning quality, live vendor cache reuse or monetary savings. The periodic policy intentionally allows up to four tool batches of lag; tool-result contents remain excluded from the judge under the existing privacy contract. Live paid tests require separate user approval.
 ## Release verification gates
 
 - Type checks and all unchanged unit tests pass.
