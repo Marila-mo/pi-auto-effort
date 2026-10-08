@@ -37,9 +37,13 @@ const bounded = (value: string, limit: number): string => {
         "\n[omitted]\n" +
         chars.slice(-limit / 2).join("");
 };
+// Version the decision identity independently of persisted cache/session formats.
+const POLICY = "tool-progress/v2";
+const RECHECK_ROUNDS = 4;
 export function snapshot(messages: readonly unknown[]): {
   key: string;
   phase: string;
+  progressStep: number;
   state: JsonObject;
 } {
   const ms = messages.filter(record);
@@ -47,23 +51,73 @@ export function snapshot(messages: readonly unknown[]): {
   const user = ms[userIndex];
   const turn = ms.slice(userIndex + 1);
   const tools = turn.filter((m) => m.role === "toolResult");
-  const lastAssistant = turn.findLastIndex((m) => m.role === "assistant");
-  const recent = turn
-    .slice(lastAssistant + 1)
-    .filter((m) => m.role === "toolResult");
-  const phase = recent.some((m) => m.isError === true)
-    ? "recovery"
-    : tools.some(
-          (m) =>
-            m.isError !== true &&
-            ["edit", "write"].includes(String(m.toolName)),
-        )
-      ? "execution"
-      : "analysis";
+  let phase = "analysis";
+  let episode = 0;
+  let progressStep = 0;
+  let phaseRounds = 0;
+  let failedRounds = 0;
+  let edited = false;
+  let assistant: Record<string, unknown> | undefined;
+  let batch: Record<string, unknown>[] = [];
+  const completeBatch = () => {
+    if (!batch.length) return;
+    const calls = Array.isArray(assistant?.content)
+      ? assistant.content.filter(record).filter((b) => b.type === "toolCall")
+      : [];
+    // Do not advance while only part of a parallel tool batch has completed.
+    if (
+      calls.some(
+        (call) =>
+          typeof call.id === "string" &&
+          !batch.some((result) => result.toolCallId === call.id),
+      )
+    )
+      return;
+    edited ||= batch.some(
+      (m) =>
+        m.isError !== true && ["edit", "write"].includes(String(m.toolName)),
+    );
+    const failed = batch.some((m) => m.isError === true);
+    const next = failed ? "recovery" : edited ? "execution" : "analysis";
+    if (next !== phase) {
+      phase = next;
+      episode++;
+      phaseRounds = 0;
+      failedRounds = 0;
+    }
+    // Standalone historical tool records retain phase semantics, but are not
+    // proof of a new assistant tool round (e.g. a read-only restored context).
+    if (assistant) {
+      progressStep++;
+      phaseRounds++;
+      if (failed) failedRounds++;
+    }
+  };
+  for (const message of turn) {
+    if (message.role === "assistant") {
+      completeBatch();
+      assistant = message;
+      batch = [];
+    } else if (message.role === "toolResult") batch.push(message);
+  }
+  completeBatch();
+  const checkpoint = Math.floor(phaseRounds / RECHECK_ROUNDS);
+  const failureCheckpoint =
+    failedRounds > 0 ? Math.floor(Math.log2(failedRounds)) : 0;
   const previous = ms.slice(0, userIndex).findLast((m) => m.role === "user");
   return {
-    key: digest([userIndex, user?.timestamp, user ? text(user) : "", phase]),
+    key: digest([
+      POLICY,
+      userIndex,
+      user?.timestamp,
+      user ? text(user) : "",
+      phase,
+      episode,
+      checkpoint,
+      failureCheckpoint,
+    ]),
     phase,
+    progressStep,
     state: {
       request: user ? bounded(text(user), 6000) : "",
       previous: previous ? bounded(text(previous), 2000) : "",
@@ -72,6 +126,9 @@ export function snapshot(messages: readonly unknown[]): {
         2000,
       ),
       phase,
+      progressStep,
+      phaseRounds,
+      failedRounds,
       tools: tools.slice(-6).map((m) => ({
         name: bounded(String(m.toolName), 128),
         failed: m.isError === true,
@@ -88,7 +145,8 @@ export function parseJudge(
   if (
     !record(value) ||
     Object.keys(value).length !== 2 ||
-    !choices.includes(String(value.effort)) ||
+    typeof value.effort !== "string" ||
+    !choices.includes(value.effort) ||
     typeof value.confidence !== "number" ||
     !Number.isFinite(value.confidence) ||
     value.confidence < threshold ||
@@ -119,7 +177,8 @@ export function parseClassification(
     a.confidence > 1 ||
     !record(a.probabilities) ||
     Object.keys(a.probabilities).length !== choices.length ||
-    !choices.includes(String(a.choice))
+    typeof a.choice !== "string" ||
+    !choices.includes(a.choice)
   )
     throw new Error("Invalid classifier choice");
   const p = a.probabilities;

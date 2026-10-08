@@ -70,7 +70,7 @@ These 11 provider/model combinations have protocol-fixture coverage, **not live-
 
 ## Cache preservation and warming
 
-OpenAI keeps the original request-level effort fixed and replays append-only effort updates at their original history boundaries. Anthropic reuses Pi's native historical effort mechanism and required beta features. Ordinary cache thresholds, expiry and vendor routing still apply; changed prompts/tools/history or compaction may require a rebase and cache miss.
+OpenAI keeps the original request-level effort fixed and replays append-only effort updates at their original history boundaries. Managed updates require standard single-agent mode. Already submitted boundaries are immutable: identical-input retries must retain their effort, and changed effort requires appended history. Anthropic reuses Pi's native historical effort mechanism and required beta features. Ordinary cache thresholds, expiry and vendor routing still apply; changed prompts/tools/history or compaction may require a rebase and cache miss.
 
 Leave warming **off** to start. `inherit` only permits Pi's own warming policy when a matching snapshot and Pi's scheduling/economic conditions allow it. It does not force warming. Maintenance consumes quota; **Codex does not enforce Pi's `maxTokens: 1` as a hard output/spending cap**, and the cancellation deadline is best-effort. Read [configuration](docs/configuration.md) before opting in.
 
@@ -90,7 +90,7 @@ npm run verify
 npm pack --dry-run
 ```
 
-The unchanged verification suite includes policy/deadline tests and real-Pi loopback protocol/catalog E2E flows. Reports are retained locally in `artifacts/`. **GitHub CI is currently not enabled**; local success is not a hosted CI result. See [publication status](docs/publication.md).
+The verification suite includes the original 14 policy/deadline tests, reviewed regression checks, adaptive checkpoint checks and real-Pi loopback protocol/catalog E2E flows. Reports are retained locally in `artifacts/`. **GitHub CI is currently not enabled**; local success is not a hosted CI result. See [publication status](docs/publication.md).
 
 ## Related work and license
 

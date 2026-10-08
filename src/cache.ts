@@ -11,6 +11,8 @@ export type Payload = {
 };
 export type CacheState = {
   version: 1;
+  // Omitted for prepared drafts; sent requests cannot rewrite the same boundary.
+  sent?: boolean;
   root: string;
   base: string;
   length: number;
@@ -30,6 +32,9 @@ function validate(value: unknown, manual = false): asserts value is Payload {
   )
     throw new Error("Unsupported Responses payload or effort");
   if (
+    (value.reasoning.mode !== undefined &&
+      value.reasoning.mode !== "standard") ||
+    value.multi_agent !== undefined ||
     value.context_management !== undefined ||
     (value.truncation !== undefined && value.truncation !== "disabled") ||
     value.input.some((item) => item.type === "configuration_update")
@@ -55,6 +60,7 @@ export function isCacheState(value: unknown): value is CacheState {
   return (
     record(value) &&
     value.version === 1 &&
+    (value.sent === undefined || typeof value.sent === "boolean") &&
     typeof value.root === "string" &&
     typeof value.prefix === "string" &&
     typeof value.base === "string" &&
@@ -77,6 +83,7 @@ export function isCacheState(value: unknown): value is CacheState {
         Number(u.index) >= 0 &&
         Number(u.index) <= Number(value.length) &&
         typeof u.prefix === "string" &&
+        typeof u.effort === "string" &&
         WIRE_LEVELS.includes(u.effort as never) &&
         (i === 0 || Number((a[i - 1] as Item).index) < Number(u.index)),
     )
@@ -99,6 +106,15 @@ export function adaptPayload(
     previous.prefix === digest(input.slice(0, previous.length));
   const base = compatible ? previous.base : desired;
   const updates = compatible ? previous.updates.map((u) => ({ ...u })) : [];
+  if (
+    compatible &&
+    previous.sent === true &&
+    previous.length === input.length &&
+    desired !== (updates.at(-1)?.effort ?? base)
+  )
+    throw new Error(
+      "Cannot change effort on an already sent Responses input boundary",
+    );
   if (desired !== (updates.at(-1)?.effort ?? base)) {
     if (updates.at(-1)?.index === input.length) updates.pop();
     if (desired !== (updates.at(-1)?.effort ?? base))
