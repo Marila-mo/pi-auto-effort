@@ -10,7 +10,8 @@ const user = (text: string) => ({ role: 'user', content: [{ type: 'input_text', 
 test('configuration is strict, conservative and bounded', () => {
   const c = parseConfig({});
   assert.equal(c.selector.kind, 'root'); assert.equal(c.warming, 'off');
-  for (const invalid of [{ timeoutMs: 0 }, { timeoutMs: Infinity }, { unknown: true }, { warming: 'force' }, { selector: { kind: 'jev' } }, { minEffort: 'off' }, { confidence: 2 }, { enabled: 'yes' }]) assert.throws(() => parseConfig(invalid));
+  assert.equal(parseConfig({ warming: 'inherit' }).warming, 'inherit');
+  for (const invalid of [{ timeoutMs: 0 }, { timeoutMs: Infinity }, { unknown: true }, { warming: 'force' }, { warming: ['off'] }, { warming: ['inherit'] }, { warming: {} }, { warming: 1 }, { selector: { kind: 'jev' } }, { minEffort: 'off' }, { confidence: 2 }, { enabled: 'yes' }]) assert.throws(() => parseConfig(invalid));
   assert.equal(parseConfig({ selector: { kind: 'jev', provider: 'typesafe', model: 'jev-latest' } }).selector.kind, 'jev');
 });
 

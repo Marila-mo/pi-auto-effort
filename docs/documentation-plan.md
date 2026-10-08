@@ -1,3 +1,5 @@
+Historical plan for the initial documentation-only change. Its CI-disabled and workflow-exclusion statements describe that earlier run; current CI status is maintained in [publication](publication.md) and [verification](verification.md).
+
 # User documentation implementation plan
 
 Status: implemented; independent plan review (xhigh, OKAY) and stable documentation review (medium, correct) found no unresolved blockers. Final clean-tree checks and public documentation upload follow the reviewed content. Scope: documentation only, on the existing Pi 1.0.4 extension; no production-code, dependency, credential, user-setting or workflow changes. Communication is Japanese; public documents remain English to match the repository. Existing live-verification limits remain in force.

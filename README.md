@@ -90,7 +90,7 @@ npm run verify
 npm pack --dry-run
 ```
 
-The verification suite includes the original 14 policy/deadline tests, reviewed regression checks, adaptive checkpoint checks and real-Pi loopback protocol/catalog E2E flows. Reports are retained locally in `artifacts/`. **GitHub CI is currently not enabled**; local success is not a hosted CI result. See [publication status](docs/publication.md).
+The verification suite includes the original 14 policy/deadline tests, reviewed regression checks, adaptive checkpoint checks and real-Pi loopback protocol/catalog E2E flows. Reports are retained locally in `artifacts/`. The [Verify workflow](.github/workflows/verify.yml) runs the full suite for pull requests, pushes to main and manual dispatch on Node 22.19.0 and 22.x. Its logs and runner evidence are uploaded even after failures and retained for 14 days. Check the [Actions results](https://github.com/Marila-mo/pi-auto-effort/actions) for hosted status; see [publication status](docs/publication.md).
 
 ## Related work and license
 
