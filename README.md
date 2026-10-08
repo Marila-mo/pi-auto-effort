@@ -4,7 +4,7 @@ Automatically adjust reasoning effort **without switching your answering model**
 
 Reasoning effort is the model's thinking-intensity setting, not the answer length or a guarantee of quality. This Pi extension chooses an effort for the next step using your current model (**root**) or a configured **Jev classifier**. It keeps the selected physical model and preserves provider-specific effort history so changes need not rewrite an existing prompt prefix.
 
-**Experimental; targets Pi 1.0.4.** Local tests use real Pi sessions and isolated HTTP fixtures. Live provider acceptance, cache hits and savings are **not verified**. Warming is off by default. [Verification](docs/verification.md) · [Publication status](docs/publication.md)
+**Experimental; targets Pi 1.0.4.** Local and hosted tests use real Pi sessions and isolated HTTP fixtures. A three-task live Codex pilot completed both automatic and fixed-high conditions and recorded real cache reads. Including judgments, automatic mode used about 1% fewer tokens but took about 17% longer in that pilot; monetary savings and broad live compatibility remain unverified. Warming is off by default. [Verification](docs/verification.md) · [Publication status](docs/publication.md)
 
 ## Before you start
 
