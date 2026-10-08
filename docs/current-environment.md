@@ -1,6 +1,6 @@
 # Current-environment follow-up
 
-Historical pre-pilot environment report. Its NOT RUN and exposure-authorization statements describe the baseline below. Current hosted CI and the bounded live comparison are recorded in [publication](publication.md) and [verification](verification.md#live-codex-pilot-2026-10-08).
+Historical environment report. Its NOT RUN and exposure-authorization statements describe the baseline below. Current hosted CI is recorded in [publication](publication.md) and [verification](verification.md).
 
 Baseline: 6332044; Pi 1.0.4, Node 22.22.2. No issues, releases, npm publication, user settings or installed host changes are part of this run.
 
