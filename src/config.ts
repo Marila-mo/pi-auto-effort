@@ -43,7 +43,8 @@ export function parseConfig(value: unknown): Config {
     confidence < 0.5 ||
     confidence > 1 ||
     !LEVELS.includes(minEffort as Effort) ||
-    !["off", "inherit"].includes(String(warming))
+    typeof warming !== "string" ||
+    !["off", "inherit"].includes(warming)
   )
     throw new Error("Invalid auto-effort configuration");
   const selector = value.selector ?? { kind: "root" };
